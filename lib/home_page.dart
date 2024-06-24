@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'database_helper.dart';
+import 'task.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -6,11 +8,44 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  List<Map<String, dynamic>> _toDoList = [
-    {'task': 'Meditate for 10 minutes', 'isDone': false},
-    {'task': 'Drink a glass of water', 'isDone': false},
-    {'task': 'Read a book for 30 minutes', 'isDone': false},
-  ];
+  final DatabaseHelper _dbHelper = DatabaseHelper();
+  final TextEditingController _taskController = TextEditingController();
+  List<Task> _tasks = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchTasks();
+  }
+
+  Future<void> _fetchTasks() async {
+    final tasks = await _dbHelper.getTasks();
+    setState(() {
+      _tasks = tasks;
+    });
+  }
+
+  Future<void> _addTask() async {
+    if (_taskController.text.isEmpty) return;
+
+    final newTask = Task(
+        id: DateTime.now().millisecondsSinceEpoch, title: _taskController.text);
+    await _dbHelper.insertTask(newTask);
+    _taskController.clear();
+    _fetchTasks();
+  }
+
+  Future<void> _toggleTaskCompletion(Task task) async {
+    final updatedTask =
+        Task(id: task.id, title: task.title, isCompleted: !task.isCompleted);
+    await _dbHelper.updateTask(updatedTask);
+    _fetchTasks();
+  }
+
+  Future<void> _deleteTask(int id) async {
+    await _dbHelper.deleteTask(id);
+    _fetchTasks();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -64,24 +99,26 @@ class _HomePageState extends State<HomePage> {
               ListView.builder(
                 shrinkWrap: true,
                 physics: NeverScrollableScrollPhysics(),
-                itemCount: _toDoList.length,
+                itemCount: _tasks.length,
                 itemBuilder: (context, index) {
                   return ListTile(
-                    leading: IconButton(
-                      icon: Icon(
-                        _toDoList[index]['isDone']
-                            ? Icons.check_box
-                            : Icons.check_box_outline_blank,
-                        color: Colors.purple,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _toDoList[index]['isDone'] =
-                              !_toDoList[index]['isDone'];
-                        });
+                    leading: Checkbox(
+                      value: _tasks[index].isCompleted,
+                      onChanged: (bool? value) {
+                        _toggleTaskCompletion(_tasks[index]);
                       },
                     ),
-                    title: Text(_toDoList[index]['task']),
+                    title: Text(
+                      _tasks[index].title,
+                      style: TextStyle(
+                        decoration: _tasks[index].isCompleted
+                            ? TextDecoration.lineThrough
+                            : null,
+                      ),
+                    ),
+                    onLongPress: () {
+                      _deleteTask(_tasks[index].id);
+                    },
                   );
                 },
               ),
@@ -129,6 +166,39 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text('Add Task'),
+              content: TextField(
+                controller: _taskController,
+                decoration: InputDecoration(
+                  hintText: 'Enter task',
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: Text('Cancel'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                ),
+                TextButton(
+                  child: Text('Add'),
+                  onPressed: () {
+                    _addTask();
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ],
+            ),
+          );
+        },
+        child: Icon(Icons.add),
+        backgroundColor: Colors.purple,
       ),
     );
   }

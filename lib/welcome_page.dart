@@ -34,7 +34,10 @@ class WelcomePage extends StatelessWidget {
               onPressed: () {
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(builder: (context) => MainScreen()),
+                  MaterialPageRoute(
+                      builder: (context) => MainScreen(
+                            email: '',
+                          )),
                 );
               },
               child: Text('START'),

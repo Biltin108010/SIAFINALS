@@ -1,29 +1,32 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'database_helper.dart';
 
 class ProfilePage extends StatelessWidget {
   final String email;
 
   ProfilePage({required this.email});
 
-  Future<Map<String, dynamic>> _fetchProfile() async {
-    final response =
-        await http.get(Uri.parse('http://localhost:8080/profile/$email'));
-    return json.decode(response.body);
+  final DatabaseHelper _dbHelper = DatabaseHelper();
+
+  Future<Map<String, dynamic>?> _fetchProfile() async {
+    return await _dbHelper.getUserProfile(email);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Profile')),
-      body: FutureBuilder<Map<String, dynamic>>(
+      appBar: AppBar(
+        title: Text('Profile'),
+      ),
+      body: FutureBuilder<Map<String, dynamic>?>(
         future: _fetchProfile(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
+          } else if (!snapshot.hasData || snapshot.data == null) {
+            return Center(child: Text('No profile data available.'));
           } else {
             var user = snapshot.data!;
             return Padding(
@@ -31,10 +34,52 @@ class ProfilePage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Text('Name: ${user['name']}', style: TextStyle(fontSize: 20)),
-                  Text('Email: ${user['email']}',
-                      style: TextStyle(fontSize: 20)),
-                  Text('Age: ${user['age']}', style: TextStyle(fontSize: 20)),
+                  Center(
+                    child: CircleAvatar(
+                      radius: 50,
+                      backgroundImage: NetworkImage(user['profilePictureUrl'] ??
+                          'https://via.placeholder.com/150'),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: ListTile(
+                      title: Text('Name',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle:
+                          Text(user['name'], style: TextStyle(fontSize: 18)),
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                  Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: ListTile(
+                      title: Text('Email',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle:
+                          Text(user['email'], style: TextStyle(fontSize: 18)),
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                  Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: ListTile(
+                      title: Text('Age',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text(user['age'].toString(),
+                          style: TextStyle(fontSize: 18)),
+                    ),
+                  ),
                 ],
               ),
             );
